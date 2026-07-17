@@ -24,7 +24,7 @@ fmed_list = [
 def is_share_link(url):
     return bool(
         match(
-            r"https?:\/\/.+\.(gdtot|filepress|pressbee|gdflix)\.\S+|https?:\/\/(gdflix|filepress|pressbee|onlystream|filebee|appdrive)\.\S+",
+            r"https?:\/\/.+\.(gdtot|filepress|pressbee|gdflix)\.\S+|https?:\/\/(gdflix|filepress|pressbee|onlystream|filebee|appdrive|driveapp|drivehub|drivesharer|drivebit|drivelinks|driveace|drivepro)\.\S+",
             url,
         )
     )
@@ -33,7 +33,7 @@ def is_share_link(url):
 def is_excep_link(url):
     return bool(
         match(
-            r"https?:\/\/.+\.(1tamilmv|gdtot|filepress|pressbee|gdflix|sharespark)\.\S+|https?:\/\/(sharer|onlystream|hubdrive|katdrive|drivefire|skymovieshd|toonworld4all|kayoanime|cinevood|gdflix|filepress|pressbee|filebee|appdrive)\.\S+",
+            r"https?:\/\/.+\.(1tamilmv|gdtot|filepress|pressbee|gdflix|sharespark)\.\S+|https?:\/\/(sharer|onlystream|hubdrive|katdrive|drivefire|skymovieshd|toonworld4all|kayoanime|cinevood|gdflix|filepress|pressbee|filebee|appdrive|driveapp|drivehub|drivesharer|drivebit|drivelinks|driveace|drivepro|kolop|hubcloud)\.\S+",
             url,
         )
     )
@@ -391,6 +391,10 @@ async def direct_link_checker(link, onlylink=False):
         blink = await justpaste(link)
     elif bool(match(r"https?:\/\/linksxyz\.\S+", link)):
         blink = await linksxyz(link)
+    elif bool(match(r"https?:\/\/(adf\.ly|adfly)\.\S+", link)):
+        blink = await adfly(link)
+    elif bool(match(r"https?:\/\/shorte\.\S+", link)):
+        blink = await shorte_st(link)
 
     # DL Sites
     elif bool(match(r"https?:\/\/cinevood\.\S+", link)):
@@ -405,6 +409,8 @@ async def direct_link_checker(link, onlylink=False):
         return await sharespark(link)
     elif bool(match(r"https?:\/\/.+\.1tamilmv\.\S+", link)):
         return await tamilmv(link)
+    elif bool(match(r"https?:\/\/hubcloud\.\S+", link)):
+        return await hubcloud(link)
 
     # DL Links
     elif bool(match(r"https?:\/\/hubdrive\.\S+", link)):
@@ -419,8 +425,11 @@ async def direct_link_checker(link, onlylink=False):
         if "gdtot" in domain:
             return await gdtot(link)
         elif "filepress" in domain or "pressbee" in domain:
-            return await filepress(link)
-        elif "appdrive" in domain or "gdflix" in domain:
+            try:
+                return await filepress(link)
+            except Exception:
+                return await sharer_scraper(link)
+        elif "appdrive" in domain or "gdflix" in domain or "driveapp" in domain or "drivehub" in domain or "drivesharer" in domain or "drivebit" in domain or "drivelinks" in domain or "driveace" in domain or "drivepro" in domain:
             return await appflix(link)
         else:
             return await sharer_scraper(link)

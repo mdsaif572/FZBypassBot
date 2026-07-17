@@ -4,9 +4,11 @@ from dotenv import load_dotenv
 from pyrogram import Client
 from pyrogram.enums import ParseMode
 from logging import getLogger, FileHandler, StreamHandler, INFO, ERROR, basicConfig
-from uvloop import install
-
-install()
+try:
+    from uvloop import install
+    install()
+except ImportError:
+    pass
 basicConfig(
     format="[%(asctime)s] [%(levelname)s] - %(message)s",  #  [%(filename)s:%(lineno)d]
     datefmt="%d-%b-%y %I:%M:%S %p",

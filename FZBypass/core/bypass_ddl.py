@@ -1,8 +1,8 @@
-from requests import post as rpost ,get as rget
 from re import findall, compile
 from time import sleep, time
 from asyncio import sleep as asleep
 from urllib.parse import quote, urlparse
+from base64 import b64decode
 
 from bs4 import BeautifulSoup
 from cloudscraper import create_scraper
@@ -127,26 +127,28 @@ async def try2link(url: str) -> str:
                     html = await res.text()
                     break
         soup = BeautifulSoup(html, "html.parser")
-        inputs = soup.find(id="go-link").find_all(name="input")
+        go_link = soup.find(id="go-link")
+        if not go_link:
+            raise DDLException("go-link not found on page")
+        inputs = go_link.find_all(name="input")
         data = { input.get('name'): input.get('value') for input in inputs }
-        await asleep(6)
-        async with session.post(f"{DOMAIN}/links/go", data=data, headers={ "X-Requested-With": "XMLHttpRequest" }) as resp:
+        await asleep(7)
+        async with session.post(f"{DOMAIN}/links/go", data=data, headers={ "X-Requested-With": "XMLHttpRequest", "Referer": f"{DOMAIN}/{code}" }) as resp:
             if 'application/json' in resp.headers.get('Content-Type'):
-                json_data = await resp.json()  
+                json_data = await resp.json()
                 try:
                     return json_data['url']
-                except:        
+                except:
                     raise DDLException("Link Extraction Failed")
+            else:
+                raise DDLException("Non-JSON response from try2link")
 
 
 async def gyanilinks(url: str) -> str:
-    '''
-    Based on https://github.com/whitedemon938/Bypass-Scripts
-    '''
     code = url.split('/')[-1]
     useragent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-    DOMAIN = "https://go.bloggingaro.com"
-    
+    DOMAIN = "https://go.gyanitheme.com"
+
     async with ClientSession() as session:
         async with session.get(f"{DOMAIN}/{code}", headers={'Referer':'https://tech.hipsonyc.com/','User-Agent': useragent}) as res:
             cookies = res.cookies
@@ -154,23 +156,27 @@ async def gyanilinks(url: str) -> str:
         async with session.get(f"{DOMAIN}/{code}", headers={'Referer':'https://hipsonyc.com/','User-Agent': useragent}, cookies=cookies) as resp:
             html = await resp.text()
         soup = BeautifulSoup(html, 'html.parser')
-        data = {inp.get('name'): inp.get('value') for inp in soup.find_all('input')}
+        go_link = soup.find(id="go-link")
+        if not go_link:
+            raise DDLException("go-link not found")
+        inputs = go_link.find_all(name="input")
+        data = {inp.get('name'): inp.get('value') for inp in inputs}
         await asleep(5)
         async with session.post(f"{DOMAIN}/links/go", data=data, headers={'X-Requested-With':'XMLHttpRequest','User-Agent': useragent, 'Referer': f"{DOMAIN}/{code}"}, cookies=cookies) as links:
             if 'application/json' in links.headers.get('Content-Type'):
                 try:
                     return (await links.json())['url']
                 except Exception:
-                      raise DDLException("Link Extraction Failed")
+                    raise DDLException("Link Extraction Failed")
 
 
 async def ouo(url: str):
-    tempurl = url.replace("ouo.io", "ouo.press")
+    tempurl = url.replace("ouo.press", "ouo.io")
     p = urlparse(tempurl)
     id = tempurl.split("/")[-1]
     client = cSession(
         headers={
-            "authority": "ouo.press",
+            "authority": "ouo.io",
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
             "cache-control": "max-age=0",
@@ -185,7 +191,10 @@ async def ouo(url: str):
         if res.headers.get("Location"):
             break
         bs4 = BeautifulSoup(res.content, "lxml")
-        inputs = bs4.form.findAll("input", {"name": compile(r"token$")})
+        form = bs4.find("form")
+        if not form:
+            raise DDLException("No form found on ouo page")
+        inputs = form.findAll("input", {"name": compile(r"token$")})
         data = {inp.get("name"): inp.get("value") for inp in inputs}
         data["x-token"] = await recaptchaV3()
         res = client.post(
@@ -197,7 +206,10 @@ async def ouo(url: str):
         )
         next_url = f"{p.scheme}://{p.hostname}/xreallcygo/{id}"
 
-    return res.headers.get("Location")
+    location = res.headers.get("Location")
+    if not location:
+        raise DDLException("Failed to bypass ouo link")
+    return location
 
 
 async def mdisk(url: str) -> str:
@@ -228,15 +240,19 @@ async def transcript(url: str, DOMAIN: str, ref: str, sltime) -> str:
          title_tag = soup.find('title')
          if title_tag and title_tag.text == 'Just a moment...':
              return "Unable To Bypass Due To Cloudflare Protected"
+         go_link = soup.find(id="go-link")
+         if not go_link:
+             inputs = soup.find_all('input')
          else:
-             data = {inp.get('name'): inp.get('value') for inp in soup.find_all('input') if inp.get('name') and inp.get('value')}
-             await asleep(sltime)
-             async with session.post(f"{DOMAIN}/links/go", data=data, headers={'Referer': f"{DOMAIN}/{code}", 'X-Requested-With':'XMLHttpRequest', 'User-Agent': useragent}, cookies=cookies) as resp:
-                  try:
-                      if 'application/json' in resp.headers.get('Content-Type'):
-                          return (await resp.json())['url']
-                  except Exception:
-                      raise DDLException("Link Extraction Failed")
+             inputs = go_link.find_all(name="input")
+         data = {inp.get('name'): inp.get('value') for inp in inputs if inp.get('name') and inp.get('value')}
+         await asleep(sltime)
+         async with session.post(f"{DOMAIN}/links/go", data=data, headers={'Referer': f"{DOMAIN}/{code}", 'X-Requested-With':'XMLHttpRequest', 'User-Agent': useragent}, cookies=cookies) as resp:
+              try:
+                  if 'application/json' in resp.headers.get('Content-Type'):
+                      return (await resp.json())['url']
+              except Exception:
+                  raise DDLException("Link Extraction Failed")
 
 
 async def justpaste(url: str):
@@ -326,3 +342,58 @@ async def thinfi(url: str) -> str:
         return BeautifulSoup(rget(url).content, "html.parser").p.a.get("href")
     except:
         raise DDLException("Link Extraction Failed")
+
+
+async def adfly(url: str) -> str:
+    cget = create_scraper().request
+    try:
+        res = cget("GET", url).text
+        ysmm = findall(r"ysmm\s+=\s+['|\"](.*?)['|\"]", res)
+        if not ysmm:
+            raise DDLException("ysmm not found")
+        ysmm = ysmm[0]
+        a, b = "", ""
+        for i in range(0, len(ysmm)):
+            if i % 2 == 0:
+                a += ysmm[i]
+            else:
+                b = ysmm[i] + b
+        key = list(a + b)
+        i = 0
+        while i < len(key):
+            if key[i].isdigit():
+                for j in range(i + 1, len(key)):
+                    if key[j].isdigit():
+                        u = int(key[i]) ^ int(key[j])
+                        if u < 10:
+                            key[i] = str(u)
+                        i = j
+                        break
+            i += 1
+        decoded = b64decode("".join(key))[16:-16].decode("utf-8")
+        if "go.php?u=" in decoded:
+            decoded = b64decode(findall(r"u=(.*)", decoded)[0]).decode("utf-8")
+        elif "dest=" in decoded:
+            decoded = findall(r"dest=(.*)", decoded)[0]
+        return decoded
+    except Exception as e:
+        raise DDLException(f"AdFly: {e.__class__.__name__}")
+
+
+async def shorte_st(url: str) -> str:
+    cget = create_scraper().request
+    try:
+        res = cget("GET", url, allow_redirects=False)
+        if res.status_code == 302 and res.headers.get("Location"):
+            return res.headers["Location"]
+        code = url.split("/")[-1]
+        api_url = f"https://api.shorte.st/v1/data/url?link={code}"
+        res = cget("GET", api_url)
+        data = res.json()
+        if data.get("status") == "ok":
+            return data["shortenedUrl"]
+        raise DDLException("shorte.st failed")
+    except DDLException:
+        raise
+    except Exception as e:
+        raise DDLException(f"shorte.st: {e.__class__.__name__}")
