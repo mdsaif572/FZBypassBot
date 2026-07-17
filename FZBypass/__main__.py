@@ -1,6 +1,7 @@
 from FZBypass import Bypass, LOGGER, Config
 from pyrogram import idle
 from pyrogram.filters import command, user
+from pyrogram.types import BotCommand
 from os import path as ospath, execl
 from asyncio import create_subprocess_exec
 from sys import executable
@@ -33,5 +34,17 @@ async def restart():
 Bypass.start()
 LOGGER.info("FZ Bot Started!")
 Bypass.loop.run_until_complete(restart())
+Bypass.loop.run_until_complete(
+    Bypass.set_bot_commands([
+        BotCommand("start", "Bot info & usage"),
+        BotCommand("bypass", "Bypass shortener/scrape link"),
+        BotCommand("bp", "Shortcut for /bypass"),
+        BotCommand("scrape", "Extract download links from movie sites"),
+        BotCommand("log", "Get bot logs (owner only)"),
+        BotCommand("restart", "Restart bot (owner only)"),
+        BotCommand("bash", "Execute Python code (owner only)"),
+        BotCommand("shell", "Execute shell command (owner only)"),
+    ])
+)
 idle()
 Bypass.stop()

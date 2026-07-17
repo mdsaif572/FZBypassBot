@@ -121,11 +121,14 @@ async def try2link(url: str) -> str:
 
     async with ClientSession() as session:
         referers = ['https://hightrip.net/', 'https://to-travel.netl', 'https://world2our.com/']
+        html = None
         for referer in referers:
             async with session.get(f'{DOMAIN}/{code}', headers={"Referer": referer}) as res:
                 if res.status == 200:
                     html = await res.text()
                     break
+        if html is None:
+            raise DDLException("try2link: No referer returned 200")
         soup = BeautifulSoup(html, "html.parser")
         go_link = soup.find(id="go-link")
         if not go_link:
@@ -306,9 +309,9 @@ async def linkvertise(url: str) -> str:
 
 
 async def rslinks(url: str) -> str:
-    resp = rget(url, stream=True, allow_redirects=False)
-    code = resp.headers["location"].split("ms9")[-1]
     try:
+        resp = rget(url, stream=True, allow_redirects=False)
+        code = resp.headers["location"].split("ms9")[-1]
         return f"http://techyproio.blogspot.com/p/short.html?{code}=="
     except:
         raise DDLException("Link Extraction Failed")
@@ -383,15 +386,12 @@ async def adfly(url: str) -> str:
 async def shorte_st(url: str) -> str:
     cget = create_scraper().request
     try:
-        res = cget("GET", url, allow_redirects=False)
-        if res.status_code == 302 and res.headers.get("Location"):
-            return res.headers["Location"]
         code = url.split("/")[-1]
         api_url = f"https://api.shorte.st/v1/data/url?link={code}"
         res = cget("GET", api_url)
         data = res.json()
-        if data.get("status") == "ok":
-            return data["shortenedUrl"]
+        if data.get("status") == "ok" and data.get("url"):
+            return data["url"]
         raise DDLException("shorte.st failed")
     except DDLException:
         raise

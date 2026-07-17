@@ -24,9 +24,9 @@ async def filepress(url: str):
         raw = urlparse(url)
         file_id = raw.path.split("/")[-1]
         async with ClientSession() as sess:
-            json_data = {"id": file_id, "method": "publicDownlaod"}
+            json_data = {"id": file_id, "method": "publicDownload"}
             async with await sess.post(
-                f"{raw.scheme}://{raw.hostname}/api/file/downlaod/",
+                f"{raw.scheme}://{raw.hostname}/api/file/download/",
                 headers={"Referer": f"{raw.scheme}://{raw.hostname}"},
                 json=json_data,
             ) as resp:
@@ -41,7 +41,7 @@ async def filepress(url: str):
                     size = combined[1].replace(")", "").strip() + "B"
             del json_data["method"]
             async with await sess.post(
-                f"{raw.scheme}://{raw.hostname}/api/file/telegram/downlaod/",
+                f"{raw.scheme}://{raw.hostname}/api/file/telegram/download/",
                 headers={"Referer": f"{raw.scheme}://{raw.hostname}"},
                 json=json_data,
             ) as resp:

@@ -1,4 +1,4 @@
-from asyncio import gather, create_task
+from asyncio import gather, create_task, sleep as asleep
 from re import search, match, sub
 from requests import get as rget
 from cloudscraper import create_scraper
