@@ -1,4 +1,5 @@
 from time import time
+from re import findall as re_findall
 from asyncio import create_task, gather, sleep as asleep
 from pyrogram.filters import command, user
 from pyrogram.types import (
@@ -19,12 +20,20 @@ from FZBypass.core.bot_utils import AuthChatsTopics, convert_time, BypassFilter
 async def start_msg(client, message):
     await message.reply(
         f"""<b><i>FZ Bypass Bot!</i></b>
-    
-    <i>A Powerful Elegant Multi Threaded Bot written in Python... which can Bypass Various Shortener Links, Scrape links, and More ... </i>
-    
-    <i><b>Bot Started {convert_time(time() - BOT_START)} ago...</b></i>
 
-🛃 <b>Use Me Here :</b> @CyberPunkGrp <i>(Bypass Topic)</i>""",
+<i>A Powerful Elegant Multi Threaded Bot written in Python... which can Bypass Various Shortener Links, Scrape links, and More ... </i>
+
+<i><b>Bot Started {convert_time(time() - BOT_START)} ago...</b></i>
+
+🛃 <b>Commands:</b>
+/bypass [link] - Bypass shortener/scrape link
+/bp [link] - Same as /bypass
+
+<b>Group Usage:</b>
+/bypass https://gdflix.dev/file/xxx
+or reply to a message with /bypass
+
+<i>Bot only works in authorized chats set via AUTH_CHATS in config.env</i>""",
         quote=True,
         reply_markup=InlineKeyboardMarkup(
             [
@@ -38,6 +47,9 @@ async def start_msg(client, message):
             ]
         ),
     )
+
+
+URL_RE = r"https?://[^\s<>\"']+|www\.[^\s<>\"']+"
 
 
 @Bypass.on_message(BypassFilter & (user(Config.OWNER_ID) | AuthChatsTopics))
@@ -59,17 +71,23 @@ async def bypass_check(client, message):
 
     link, tlinks, no = "", [], 0
     atasks = []
-    for enty in entities:
-        if enty.type == MessageEntityType.URL:
-            link = txt[enty.offset : (enty.offset + enty.length)]
-        elif enty.type == MessageEntityType.TEXT_LINK:
-            link = enty.url
-
-        if link:
+    if entities:
+        for enty in entities:
+            if enty.type == MessageEntityType.URL:
+                link = txt[enty.offset : (enty.offset + enty.length)]
+            elif enty.type == MessageEntityType.TEXT_LINK:
+                link = enty.url
+            if link:
+                no += 1
+                tlinks.append(link)
+                atasks.append(create_task(direct_link_checker(link)))
+                link = ""
+    if not tlinks:
+        found = re_findall(URL_RE, txt)
+        for link in found:
             no += 1
             tlinks.append(link)
             atasks.append(create_task(direct_link_checker(link)))
-            link = ""
 
     completed_tasks = await gather(*atasks, return_exceptions=True)
 

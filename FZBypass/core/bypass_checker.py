@@ -409,6 +409,8 @@ async def direct_link_checker(link, onlylink=False):
         return await sharespark(link)
     elif bool(match(r"https?:\/\/.+\.1tamilmv\.\S+", link)):
         return await tamilmv(link)
+    elif bool(match(r"https?:\/\/clicknupload\.\S+", link)):
+        return await clicknupload(link)
     elif bool(match(r"https?:\/\/hubcloud\.\S+", link)):
         return await hubcloud(link)
 

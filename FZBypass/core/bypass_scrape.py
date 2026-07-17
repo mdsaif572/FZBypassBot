@@ -259,6 +259,48 @@ async def tamilmv(url):
     return parse_data
 
 
+async def clicknupload(url: str) -> str:
+    from FZBypass.core.bypass_dlinks import _request_site
+    import re as _re
+
+    resp, _ = await _request_site(url)
+    url = resp.url
+    soup = BeautifulSoup(resp.text, "html.parser")
+    title = soup.title.string.strip() if soup.title and soup.title.string else "N/A"
+    form = soup.find("form")
+    if not form:
+        raise DDLException("clicknupload: No form found")
+    data = {}
+    for inp in form.find_all("input"):
+        name = inp.get("name")
+        if name:
+            data[name] = inp.get("value", "")
+    data.pop("method_free", None)
+    data.pop("method_premium", None)
+    data["method_free"] = "Slow Download"
+    cget = create_scraper().request
+    resp2 = cget("POST", url, data=data, allow_redirects=True)
+    dl_match = _re.search(r'<a href="(https?://[^"]+)"[^>]*>Click here to download</a>', resp2.text, _re.I)
+    if dl_match:
+        dl_link = dl_match.group(1)
+    else:
+        soup2 = BeautifulSoup(resp2.text, "html.parser")
+        for a in soup2.find_all("a"):
+            href = a.get("href", "")
+            txt = a.get_text(strip=True).lower()
+            if "download" in txt and href and href != "#" and "payments" not in href and "javascript" not in href:
+                dl_link = href
+                break
+        else:
+            raise DDLException("clicknupload: Download link not found (may require premium)")
+    if "clicknupload.click" in dl_link:
+        dl_link = dl_link.replace("clicknupload.click", "clicknupload.cam")
+    parse_txt = f"""┏<b>Name:</b> <code>{title}</code>
+┠<b>Source:</b> <code>{url}</code>
+┖<b>Link:</b> <a href='{dl_link}'>Download</a>"""
+    return parse_txt
+
+
 async def hubcloud(url: str) -> str:
     from FZBypass.core.bypass_dlinks import _request_site
     from curl_cffi.requests import Session as cSession
